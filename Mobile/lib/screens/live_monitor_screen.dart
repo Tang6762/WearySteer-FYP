@@ -1,7 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../models/fatigue_sample.dart';
-import '../services/dummy_fatigue_simulator.dart';
 import '../services/live_camera_service.dart';
 import '../widgets/alert_banner.dart';
 import '../widgets/modality_breakdown.dart';
@@ -16,7 +15,6 @@ class LiveMonitorScreen extends StatefulWidget {
 }
 
 class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
-  final DummyFatigueSimulator _sim = DummyFatigueSimulator();
   final LiveCameraService _camera = LiveCameraService();
   final List<FatigueSample> _history = [];
 
@@ -35,7 +33,7 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
   @override
   void initState() {
     super.initState();
-    _sim.stream.listen((sample) {
+    _camera.stream.listen((sample) {
       if (!mounted) return;
       setState(() {
         _current = sample;
@@ -58,23 +56,23 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
     }
   }
 
-  void _toggleRunning() {
+  Future<void> _toggleRunning() async {
+    if (!_cameraReady) return;
     setState(() => _running = !_running);
     if (_running) {
-      _sim.start();
+      await _camera.start();
     } else {
-      _sim.stop();
+      await _camera.stop();
     }
   }
 
   void _reset() {
-    _sim.reset();
+    _camera.reset();
     setState(() => _history.clear());
   }
 
   @override
   void dispose() {
-    _sim.dispose();
     _camera.dispose();
     super.dispose();
   }
@@ -130,7 +128,7 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'MSFI shown here is simulated — not yet driven by the camera feed above.',
+                      'Live MSFI from on-device TFLite model (EAR / MAR / shoulder slump).',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white38, fontSize: 11),
                     ),
@@ -152,19 +150,6 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
                             label: Text(_running ? 'Pause' : 'Start'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _running ? Colors.orange : Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _running ? _sim.triggerDrowsyEvent : null,
-                            icon: const Icon(Icons.bolt),
-                            label: const Text('Simulate Drowsy'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE74C3C),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
